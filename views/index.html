@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>searchmate</title>
+    <script src="/socket.io/socket.io.js"></script>
+
+</head>
+<body style="margin:0px 0px 0px 0px;">
+	<input id='query' type="text" style="border-top-style:none;border-left-style:none;border-right-style:none;font-size:40px;color:#FFFFFF;background-color:transparent;z-index:11;position:absolute;height:50px;width:300px;left: 810px;top:515px;"></input>
+	<img style="background:url('/images/background020_l.jpg') no-repeat;z-index: -1;" width="1920px" height="1080px">
+	<canvas id="monkeypark" width="1920px" height="1080px"></canvas>
+	<div id="preview" style="position:absolute;left:480px;top:100px;width:960px;">
+		<h1 id="prev-title" style="opacity: 0.7;"></h1>
+		<h4 id="prev-url" style="opacity: 0.7;"></h4>
+		<p id="prev-sunipet" style="opacity: 0.7;"></p>
+		<img id="prev-image" style="opacity: 0.7;">
+	</div>
+
+
+	<script src="/javascripts/AmabaCanvas.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/javascripts/AmebaCanvasWebWorker.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/javascripts/searchmate_main.js" type="text/javascript" charset="utf-8"></script>	
+</body>
+</html>

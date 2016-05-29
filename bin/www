@@ -1,0 +1,411 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('SearchMate:server');
+var http = require('http');
+var ceerio = require('cheerio-httpcli');
+var cutiecapt = require('../node_modules/cutiecapt');
+var webshot = require('webshot');
+var async = require('async');
+var util = require('util');
+var mime = require('mime');
+var Q = require('q');
+var fs = require('fs');
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '50000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+var io = require('socket.io').listen(server);
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+
+
+
+
+
+
+io.on('connection', function (client) {
+
+
+    client.on('reqSuggest', function (message) {
+        console.log('reqSuggest');
+        var suggest_query = "http://ff.search.yahoo.com/gossip?output=xml&command=";
+        var prefixes = message;
+        var sendObj = new Array();
+        console.log(message);
+
+        if (Object.keys(message).length != 0) {
+            async.waterfall([
+                function (callback) {
+                    prefixes.forEach(function (val, index, arr) {
+                        ceerio.fetch(suggest_query + val, function (err, $, reses, body) {
+                            if (err) {
+                                console.log(err);
+                            }
+                            console.log(body);
+                            var regExp = new RegExp('k="([^"]*)"', 'g');
+                            var sus;
+                            var aa = new Array();
+                            var item = new Array();
+                            item.push(val);
+                            while ((sus = regExp.exec(body)) != null) {
+                                aa.push(sus);
+                                if (!regExp.global) {
+                                    break;
+                                }
+                            }
+                            aa.forEach(function (val, index, arr) {
+                                //console.log(val[1]);
+                                item.push(val[1]);
+                            });
+                            sendObj.push(item);
+                            console.log(item);
+                            //var sus = body.match(regExp);
+                            // console.log(sus);
+                            if (sendObj.length == prefixes.length) {
+                                callback(null, sendObj);
+                            }
+
+                        });
+                    });
+
+                }
+            ], function (err, arg) {
+                console.log('sendSuggest');
+                client.emit('suggest', arg);
+            });
+        }
+
+        //console.log(prefixes);
+
+    });
+
+    client.on('query', function (obj) {
+        /*
+         obj{
+         query:
+         count:
+         }
+         */
+//        ceerio.fetch(QUERY_URL_A+obj.search+QUERY_URL_B+obj.count, function (err, $, reses, body) {
+        var go_query = 'https://www.google.co.jp/search?q=' + obj.query + '&ie=UTF-8&oe=UTF-8&num=10';
+
+
+        ceerio.fetch(go_query, function (err, $, reses, body) {
+
+            //objectを作ってしまう
+            // console.log(body);
+            console.log('-------');
+            console.log($('a').attr('href'));
+            console.log($('title').text());
+
+            //空白で区切る
+            var querys = obj.query.split(/\s/);
+            console.log('prQuerys');
+            console.log(querys);
+
+            var linkarray = $('a').attr('href');
+            var titlearray = $('title').text();
+            var relation = Array();
+            relation.push(obj.query);
+
+
+            var linkarray = new Array();
+            var suniarray = new Array();
+            var titlearray = new Array();
+            // リンク一覧を表示
+            $('h3 a').each(function (idx) {
+                linkarray.push($(this).attr('href'));
+                titlearray.push($(this).text());
+                //console.log('linklink');
+               // console.log($(this).attr('href'));
+            });
+
+            $('.st').each(function (idx) {
+                suniarray.push($(this).text());
+              //  console.log('sunipetsunipet');
+              //  console.log($(this).text());
+            });
+
+            //その他のキーワーど
+            //検索クエリ通りのやつ
+            $('.nobr').each(function (idx) {
+                relation.push($(this).text());
+            });
+
+            var linksdataArray = new Array();
+            //sendオブジェクトの生成
+            for (var i = 0; i < linkarray.length; i++) {
+                linksdataArray.push({
+                    query:obj.query,
+                    title: titlearray[i],
+                    link: linkarray[i],
+                    sunipet: suniarray[i],
+                    image: './images/star.jpg'//ロード画像url
+                });
+
+            }
+
+
+            var resultobj = {
+                result: go_query,//検索クエリのアドレス
+                title: obj.query//検索クエリ
+              //  links: linksdataArray//検索結果
+            };
+
+            /*  fs.readFile('public/images/onodasenpai',function(data,err){
+             if(err){
+             throw err;
+             }
+
+             console.log(obj);
+             res.send(obj);
+             });
+             */
+           // console.log(reses.url);
+            console.log(resultobj);
+            client.emit('result', resultobj);
+            // console.log('rererer');
+
+
+            /* var imageobjarray = new Array();
+             var ec = function (num) {
+             var emiemi = function () {
+             client.emit('result_image', {imageurl: './images/result' + String(num) + '.png', relation: num});
+             }
+             return emiemi;
+             }
+             var emittask = new Array();
+             var counter=0;*/
+             var ary = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+
+            // relation.forEach(function (value, index, arr) {
+            //     var temp = value.split(/\s/);
+            //     console.log(temp);
+            //     temp.forEach(function (val, idx, ary) {
+            //         console.log(val);
+            //         if (querys.indexOf(val) != -1) {
+            //             querys.push(val);
+            //         }
+            //     });
+            // });
+
+            // querys.forEach(function (value, index, arr) {
+            //     var temp = 'https://www.google.co.jp/search?q=' + value + '&ie=UTF-8&oe=UTF-8&num=10';
+            //     ceerio.fetch(temp, function (err, $, reses, body) {
+            //         //その他のキーワード
+            //         $('.nobr').each(function (idx) {
+            //             console.log($(this).text());
+            //             relation.push($(this).text());
+            //             client.emit('responseRelationSearch', relation);
+            //         });
+            //     });
+            // });
+            // console.log('resultQuerys');
+            // console.log(querys);
+            // console.log(relation);
+
+
+            //画像をキャプチャ
+
+            var cuitecapture = function (val) {
+
+                var d = Q.defer();
+                console.log('cuitecapture');
+                console.log(val);
+                console.log(linkarray);
+                if (val < linkarray.length) {
+                    cutiecapt.capture(linkarray[val].replace('http://', ''), './public/images/result' + String(val) + '.png', function () {
+                        //console.log('aaaa');
+                        /*
+                         imageobj{
+                         imageurl:
+                         relation:
+                         }
+                         */
+//                    imageobjarray.push({imageurl: '../images/result' + String(i) + '.png'});
+                        //console.log(num);
+
+                        client.emit('result_image', {
+                            imageurl: './images/result' + String(val) + '.png',
+                            relation: val
+                        });
+                        d.resolve('./images/result' + String(val) + '.png');
+                        return d.promise;
+                    });
+                }
+
+            };
+            var options = {
+              screenSize: {
+                width: 960
+              , height: 540
+              }
+            , shotSize: {
+                width: 960
+              , height: 540
+              }
+            };
+
+            var webshoter = function (val) {
+                var d = Q.defer();
+                if (val < linkarray.length) {
+                   var renderStream = webshot(linkarray[val], './public/images/result' + String(val) + '.png', options,function (err) {
+                        // screenshot now saved to google.png
+                        if (err) {
+                            console.log(err);
+
+
+                        }
+                        var sendobj = linksdataArray[val];
+                        fs.readFile( './images/result' + String(val) + '.png',function(err, buf){   //neko.jpgを読み込み、function(err,data)の呼び出し
+                          console.log(buf);
+//                          var data = buf.toString("base64");
+                          //res.set('Content-Type', 'image/jpeg');  //ヘッダの指定 jpeg
+                          //res.send(data);   //送信
+                          sendobj.image = util.format("data:%s;base64,%s", mime.lookup('./images/result' + String(val) + '.png'), data);
+                        });
+                       // sendobj.image =  './images/result' + String(val) + '.png';
+                        // client.emit('result_image', {
+                        //     imageurl: './images/result' + String(val) + '.png',
+                        //     relation: val
+                        // });
+                        console.log(sendobj.image);
+                        client.emit('result_image',sendobj);
+                        d.resolve('./images/result' + String(val) + '.png');
+                        return d.promise;
+                    });
+
+                    renderStream.on('data', function(data) {
+                      file.write(data.toString('binary'), 'binary');
+                    });
+
+                }
+            };
+
+            // Q.all(ary.map(webshoter))
+            //     .then(function (data) {
+            //         console.log(data+'aa');
+            //     });
+            /*Q.all(ary.map(cuitecapture))
+             .then(function (data) {
+             console.log(data);
+             });*/
+             // var renderStream = webshot(linksdataArray[0].link);
+             //   renderStream.on('data',function(buf){
+              
+             // });
+
+            linksdataArray.forEach(function(elm,index){
+              var renderStream = webshot(elm.link,'./images/result' + String(index) + '.png',options,function(err){
+                fs.readFile( './images/result' + String(index) + '.png',function(err, buf){   //neko.jpgを読み込み、function(err,data)の呼び出し
+                          //console.log(buf);
+//                          var data = buf.toString("base64");
+                          //res.set('Content-Type', 'image/jpeg');  //ヘッダの指定 jpeg
+                          //res.send(data);   //送信
+                          var data = buf.toString("base64");
+                          elm.image = util.format("data:%s;base64,%s", mime.lookup('./images/result' + String(index) + '.png'), data);
+                        client.emit('result_image',elm);
+                    });
+              });
+              
+               
+            });
+
+       });
+
+
+    
+
+
+    });
+
+
+});
+
+
+
+
+
+
+
+
