@@ -124,6 +124,7 @@ io.on('connection', function (client) {
      */
 
      client.on('join',function(message){
+  
         if (addedUser) return;
 
         // we store the username in the socket session for this client

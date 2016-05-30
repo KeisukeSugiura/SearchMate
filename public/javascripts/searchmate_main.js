@@ -1,3 +1,5 @@
+
+
 var socket = new io.connect('http://133.68.112.180:50000');
 var query_box = document.getElementById('query');
 
@@ -41,7 +43,7 @@ var search_for = function (e) {
         query_box.value = "";
         if (query_word != null && query_word != "") {
             
-            
+
            // socket.emit('query', {query: query_word, count: 10});
 
 
@@ -432,4 +434,35 @@ socket.on('result_image', function (obj) {
 
     amebaCanvas.addCard(ameba);
 
+ 
+});
+
+$(function(){
+   $.ajax({
+      type: 'GET',
+      url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/branches',
+      dataType: 'json',
+      success: function(json){
+        console.log(json);
+        // var len = json.length;
+        // for(var i=0; i < len; i++){
+        //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+        // }
+        
+      }
+    });
+
+   $.ajax({
+      type: 'GET',
+      url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/events',
+      dataType: 'json',
+      success: function(json){
+        console.log(json);
+        // var len = json.length;
+        // for(var i=0; i < len; i++){
+        //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+        // }
+        
+      }
+    });
 });
