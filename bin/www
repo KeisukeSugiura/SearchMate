@@ -4,6 +4,9 @@
  * Module dependencies.
  */
 
+var AmebaCard = require('../lib/VirtualAmebaCard.js');
+var AmebaCanvas = require('../lib/VirtualAmebaCanvas.js');
+
 var app = require('../app');
 var debug = require('debug')('SearchMate:server');
 var http = require('http');
@@ -99,11 +102,98 @@ function onListening() {
 
 
 
+var numUsers= 0;
+var virtualAmebaCanvas;
+
+
+
+
+
+
+
+
 
 
 
 io.on('connection', function (client) {
 
+    var addedUser=false;
+
+    /*
+    user session
+     */
+
+     client.on('join',function(message){
+        if (addedUser) return;
+
+        // we store the username in the socket session for this client
+        if(numUsers < 1 ){
+          console.log(numUsers);
+          client.emit('initialize',{});
+
+        }else{
+            virtualAmebaCanvas.wProcessSendAllDatas(function(data){
+              console.log(data);
+              client.emit('sync_virtual',data);
+            });
+          //client.emit('sync_virtual',{});
+        }
+
+        ++numUsers;
+        addedUser = true;
+        // socket.emit('login', {
+        //   numUsers: numUsers
+        // });
+
+     });
+
+     client.on('initialize',function(data){
+      console.log(numUsers);
+      console.log(data);
+      virtualAmebaCanvas = new AmebaCanvas({id:"monkeypark",width:1920,height:1080});
+      Object.keys(data).forEach(function(elm,index){
+        console.log(data[elm].tags);
+        virtualAmebaCanvas.addCard(new AmebaCard(data[elm]));
+      });
+     // virtualAmebaCanvas.startAnimation(client);
+
+     });
+
+     client.on('sync_add',function(data){
+
+     });
+   
+  
+    client.on('sync_delete',function(data){
+
+    });
+
+    client.on('sync_drag_move',function(data){
+      client.emit('sync_drag_move',data);
+      client.broadcast.emit('sync_drag_move',data);
+    });
+
+    client.on('sync_cluster_move',function(data){
+      client.broadcast.emit('sync_cluster_move',data);
+    });
+
+
+         // when the user disconnects.. perform this
+      client.on('disconnect', function () {
+        if (addedUser) {
+          --numUsers;
+          if(numUsers<1){
+            virtualAmebaCanvas=null;
+          }
+        }
+      });
+
+
+
+
+     /*
+     web client session
+      */
 
     client.on('reqSuggest', function (message) {
         console.log('reqSuggest');
@@ -242,7 +332,15 @@ io.on('connection', function (client) {
              */
            // console.log(reses.url);
             console.log(resultobj);
-            client.emit('result', resultobj);
+
+            var ameba = new AmebaCard({cardType:"cluster",text:resultobj.title,textSize:"50px",color:'white',x:810,y:565});
+            ameba.addTag(resultobj.title);
+            virtualAmebaCanvas.addCard(ameba);
+            virtualAmebaCanvas.wProcessSendData(ameba.id,function(obj){
+              obj.id = ameba.id;
+            client.emit('result', obj);
+            client.broadcast.emit('result',obj);
+            });
             // console.log('rererer');
 
 
@@ -384,7 +482,24 @@ io.on('connection', function (client) {
                           //res.send(data);   //送信
                           var data = buf.toString("base64");
                           elm.image = util.format("data:%s;base64,%s", mime.lookup('./images/result' + String(index) + '.png'), data);
-                        client.emit('result_image',elm);
+                        
+                          var ameba = new AmebaCard({cardType:"image",url:elm.image,scale:0.1});
+                          ameba.addTag(obj.query);
+                          ameba.datas['originalTag'] = [];
+                          ameba.datas['originalTag'].push(elm.query);
+                          ameba.datas['title']=elm.title;
+                          ameba.datas['link'] = elm.link;
+                          ameba.datas['snipet'] = elm.sunipet;
+                          ameba.datas['image'] = elm.image;
+                          virtualAmebaCanvas.addCard(ameba);
+
+                          virtualAmebaCanvas.wProcessSendData(ameba.id,function(data){
+                              client.emit('sync_result_image',data);
+                              client.broadcast.emit('sync_result_image',data);
+                              console.log("broadcast");
+                          });
+                          
+                        //client.emit('result_image',elm);
                     });
               });
               
@@ -398,6 +513,57 @@ io.on('connection', function (client) {
 
 
     });
+
+  client.on('webshot',function(data){
+    /*
+      {url,,}
+     */
+    var options = {
+              screenSize: {
+                width: 960
+              , height: 540
+              }
+            , shotSize: {
+                width: 960
+              , height: 540
+              }
+      };
+
+
+    var renderStream = webshot(data.url,'./images/result' + 'single' + '.png',options,function(err){
+        fs.readFile( './images/result' + 'single' + '.png',function(err, buf){   //neko.jpgを読み込み、function(err,data)の呼び出し
+                  //console.log(buf);
+//                          var data = buf.toString("base64");
+                  //res.set('Content-Type', 'image/jpeg');  //ヘッダの指定 jpeg
+                  //res.send(data);   //送信
+                  var data = buf.toString("base64");
+                  var image = util.format("data:%s;base64,%s", mime.lookup('./images/result' + 'single' + '.png'), data);
+                
+               ceerio.fetch(data.url, function (err, $, reses, body) {
+                  
+                  var title =$('title').text();
+                  var ameba = new AmebaCard({cardType:"image",url:image,scale:0.1});
+                   //ameba.addTag(obj.query);
+                   //ameba.datas['originalTag'] = [];
+                  // ameba.datas['originalTag'].push(elm.query);
+                   ameba.datas['title']= title;
+                   ameba.datas['link'] = data.url;
+                   ameba.datas['snipet'] = "";
+                   ameba.datas['image'] = image;
+                  virtualAmebaCanvas.addCard(ameba);
+
+                  virtualAmebaCanvas.wProcessSendData(ameba.id,function(data){
+                      client.emit('sync_result_image',data);
+                      client.broadcast.emit('sync_result_image',data);
+                      console.log("broadcast");
+                  });
+               });   
+                //client.emit('result_image',elm);
+            });
+      });
+  });
+
+
 
 
 });

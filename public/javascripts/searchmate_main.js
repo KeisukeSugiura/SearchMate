@@ -31,47 +31,7 @@ var amebaCanvas = new AmebaCanvas({id:"monkeypark",width:1920,height:1080});
 
 
 
-var amebaFavoriteCard = new AmebaCard({cardType:"cluster",url:"./images/favorite.png",text:"favorite",x:0,y:984});
-amebaFavoriteCard.addTag("favorite");
-amebaFavoriteCard.width=96;
-amebaFavoriteCard.height=96;
-amebaFavoriteCard.preRenderCanvas = null;
-amebaFavoriteCard.grobalAlpha=0.8;
-amebaFavoriteCard.preRenderCanvas = amebaFavoriteCard.renderImage();
-amebaFavoriteCard.setOnMouseEventListener('dblclick',function(e,card){
-    var targetCardId = card.department.focusCard;
-    console.log(targetCardId);
-    var targetCard = card.department.amebas[targetCardId];
-    targetCard.changeTagSet('favorite');
-});
-amebaCanvas.addCard(amebaFavoriteCard);
 
-var amebaSyncCard = new AmebaCard({cardType:"cluster",url:"./images/sync.png",text:"sync",x:0,y:0});
-amebaSyncCard.addTag("sync");
-amebaSyncCard.width=96;
-amebaSyncCard.height=96;
-amebaSyncCard.preRenderCanvas = null;
-amebaSyncCard.grobalAlpha=0.8;
-amebaSyncCard.preRenderCanvas = amebaSyncCard.renderImage();
-amebaSyncCard.setOnMouseEventListener('dblclick',function(e,card){
-    var targetCardId = card.department.focusCard;
-    var targetCard = card.department.amebas[targetCardId];
-    targetCard.changeTagSet('sync');
-});
-amebaCanvas.addCard(amebaSyncCard);
-
-var amebaDeleteCard = new AmebaCard({cardType:"cluster",url:"./images/delete.png",text:"Delete",x:0,y:492});
-amebaDeleteCard.addTag("delete");
-amebaDeleteCard.width=96;
-amebaDeleteCard.height=96;
-amebaDeleteCard.preRenderCanvas = null;
-amebaDeleteCard.grobalAlpha=0.8;
-amebaDeleteCard.preRenderCanvas = amebaDeleteCard.renderImage();
-amebaDeleteCard.setOnMouseEventListener('dblclick',function(e,card){
-    var targetCardId = card.department.focusCard;
-    card.department.removeAmeba(targetCardId);
-});
-amebaCanvas.addCard(amebaDeleteCard);
 
 
 var search_for = function (e) {
@@ -81,8 +41,8 @@ var search_for = function (e) {
         query_box.value = "";
         if (query_word != null && query_word != "") {
             
-
-            socket.emit('query', {query: query_word, count: 10});
+            
+           // socket.emit('query', {query: query_word, count: 10});
 
 
             console.log(query_word);
@@ -107,9 +67,268 @@ query_box.addEventListener('focus',function(event){
         image.src = null;
 });
 
+
+
+
+
+
+
+
+
+/*
+socket.io
+ */
+
+
+socket.emit('join',{});
+
+socket.on('initialize',function(message){
+    var amebaFavoriteCard = new AmebaCard({cardType:"cluster",url:"./images/favorite.png",text:"favorite",x:0,y:984});
+        amebaFavoriteCard.addTag("favorite");
+        amebaFavoriteCard.addTag("_control");
+        amebaFavoriteCard.width=96;
+        amebaFavoriteCard.height=96;
+        amebaFavoriteCard.preRenderCanvas = null;
+        amebaFavoriteCard.grobalAlpha=0.8;
+        amebaFavoriteCard.preRenderCanvas = amebaFavoriteCard.renderImage();
+        amebaFavoriteCard.setOnMouseEventListener('dblclick',function(e,card){
+            var targetCardId = card.department.focusCard;
+            console.log(targetCardId);
+            var targetCard = card.department.amebas[targetCardId];
+            targetCard.changeTagSet('favorite');
+        });
+        amebaCanvas.addCard(amebaFavoriteCard);
+
+        var amebaSyncCard = new AmebaCard({cardType:"cluster",url:"./images/sync.png",text:"sync",x:0,y:0});
+        amebaSyncCard.addTag("sync");
+        amebaSyncCard.addTag("_control");
+        amebaSyncCard.width=96;
+        amebaSyncCard.height=96;
+        amebaSyncCard.preRenderCanvas = null;
+        amebaSyncCard.grobalAlpha=0.8;
+        amebaSyncCard.preRenderCanvas = amebaSyncCard.renderImage();
+        amebaSyncCard.setOnMouseEventListener('dblclick',function(e,card){
+            var targetCardId = card.department.focusCard;
+            var targetCard = card.department.amebas[targetCardId];
+            targetCard.changeTagSet('sync');
+        });
+        amebaCanvas.addCard(amebaSyncCard);
+
+        var amebaDeleteCard = new AmebaCard({cardType:"cluster",url:"./images/delete.png",text:"Delete",x:0,y:492});
+        amebaDeleteCard.addTag("delete");
+        amebaDeleteCard.addTag("_control");
+        amebaDeleteCard.width=96;
+        amebaDeleteCard.height=96;
+        amebaDeleteCard.preRenderCanvas = null;
+        amebaDeleteCard.grobalAlpha=0.8;
+        amebaDeleteCard.preRenderCanvas = amebaDeleteCard.renderImage();
+        amebaDeleteCard.setOnMouseEventListener('dblclick',function(e,card){
+            var targetCardId = card.department.focusCard;
+            card.department.removeAmeba(targetCardId);
+        });
+        amebaCanvas.addCard(amebaDeleteCard);
+        amebaCanvas.initWebWorker('/javascripts/AmebaCanvasWebWorker.js',socket);
+        amebaCanvas.startAnimation(socket);
+        amebaCanvas.wProcessSendAllDatas(function(data){
+            socket.emit('initialize',data);
+        });
+       // amebaCanvas.startAnimation();
+});
+
+socket.on('sync_virtual',function(message){
+   console.log(message);
+   Object.keys(message).forEach(function(elm,index){
+    console.log(message[elm]);
+
+    var card = new AmebaCard(message[elm]);
+    console.log(card.tags);
+    if(card.hasTag('_control')){
+        card.preRenderCanvas = null;
+        card.grobalAlpha=0.8;
+        card.preRenderCanvas = card.renderImage();
+        card.setOnMouseEventListener('dblclick',function(e,acard){
+            var targetCardId = acard.department.focusCard;
+            acard.department.removeAmeba(targetCardId);
+        });
+    }else if(card.datas["link"] != undefined){
+        amebaCanvas.webCardEventSet(card);
+    }
+
+    amebaCanvas.addCard(card);
+   });
+   amebaCanvas.startAnimation();
+    //amebaCanvas.startAnimation();
+});
+
+
+AmebaCanvas.prototype.webCardEventSet = function(wAmeba){
+    wAmeba.setOnMouseEventListener("click",function(e,card){
+       card.width = card.width*1.10;
+       card.height = card.height*1.10;
+        card.department.focusCard = card.id;
+        console.log(card.department.focusCard);
+       card.preRender();
+    });
+   
+    wAmeba.setOnMouseEventListener("dblclick",function(e,card){
+        window.open(ameba.datas['link']);
+    });
+    wAmeba.setOnMouseEventListener("mouseover",function(e,card){
+         // var htmlsrc =  '<div style="position:absolute;left:500px;top:300px;">' +
+        // "<h1>"+obj.title+"</h1>"+
+        // "<h4>"+obj.link+"</h4>"+
+        // "<p>"+obj.snipet+"</p>"+
+        // '<img url="'+obj.image+'">'+
+        //  "</div>";
+        //  document.body.appendChild(htmlsrc);
+        var div = document.getElementById("preview");
+        var h1 = document.getElementById("prev-title");
+        var h4 = document.getElementById("prev-url");
+        var p = document.getElementById("prev-sunipet");
+        var image = document.getElementById("prev-image");
+        h1.innerHTML = wAmeba.datas['title'];
+        h4.innerHTML = wAmeba.datas['link'];
+        p.innerHTML = wAmeba.datas['sunipet'];
+        image.src = wAmeba.datas['image'];
+    });
+    wAmeba.setOnMouseEventListener("mouseleave",function(e,card){
+
+    });
+    wAmeba.setOnMouseEventListener("contextmenu",function(e,card){
+        //console.log('aaaaa');
+        //var targetCardId = card.department.focusCard;
+        //card.department.removeAmeba(targetCardId);
+        //card.removeAmeba(card.id);
+    });
+};
+
+
+AmebaCanvas.prototype.sync_add = function(ameba){
+     var card = new AmebaCard(ameba);
+
+     if(card.hasTag('_control')){
+
+     }else if(card.datas['link'] != undefined){
+        card.webCardEventSet(card);
+     };
+
+};
+AmebaCanvas.prototype.sync_delete = function(ameba){
+
+};
+
+AmebaCanvas.prototype.sync_drag_move = function(id,x,y){
+    socket.emit('sync_drag_move',{
+        id:id,
+        x:x,
+        y:y
+    });
+};
+
+
+
+socket.on('sync_add',function(data){
+
+});
+
+socket.on('sync_delete',function(data){
+
+});
+
+socket.on('sync_drag_move',function(data){
+    amebaCanvas.amebas[data.id].moveTo(data.x,data.y,"mousemove");
+});
+
+socket.on('sync_cluster_move',function(data){
+    //console.log(data);
+    //console.log(amebaCanvas.amebas[data.id]);
+        if(amebaCanvas.amebas[data.id] != undefined){
+            amebaCanvas.amebas[data.id].setPosition(data.x,data.y);
+
+        }
+});
+
+socket.on('sync_result_image',function(data){
+            console.log(data);
+    /*
+     linksdataArray.push({
+        title: titlearray[i],
+        link: linkarray[i],
+        sunipet: suniarray[i],
+        image: './images/sunagitune.jpeg'//ロード画像url
+       });
+     */
+    
+    var ameba = new AmebaCard(data);
+    
+
+    ameba.setOnMouseEventListener("click",function(e,card){
+       card.width = card.width*1.10;
+       card.height = card.height*1.10;
+        card.department.focusCard = card.id;
+        console.log(card.department.focusCard);
+       card.preRender();
+    });
+   
+    ameba.setOnMouseEventListener("dblclick",function(e,card){
+        window.open(ameba.datas['link']);
+    });
+    ameba.setOnMouseEventListener("mouseover",function(e,card){
+         // var htmlsrc =  '<div style="position:absolute;left:500px;top:300px;">' +
+        // "<h1>"+obj.title+"</h1>"+
+        // "<h4>"+obj.link+"</h4>"+
+        // "<p>"+obj.snipet+"</p>"+
+        // '<img url="'+obj.image+'">'+
+        //  "</div>";
+        //  document.body.appendChild(htmlsrc);
+        var div = document.getElementById("preview");
+        var h1 = document.getElementById("prev-title");
+        var h4 = document.getElementById("prev-url");
+        var p = document.getElementById("prev-sunipet");
+        var image = document.getElementById("prev-image");
+        h1.innerHTML = ameba.datas['title'];
+        h4.innerHTML = ameba.datas['link'];
+        p.innerHTML = ameba.datas['sunipet'];
+        image.src = ameba.datas['image'];
+    });
+    ameba.setOnMouseEventListener("mouseleave",function(e,card){
+
+    });
+    ameba.setOnMouseEventListener("contextmenu",function(e,card){
+        //console.log('aaaaa');
+        //var targetCardId = card.department.focusCard;
+        //card.department.removeAmeba(targetCardId);
+        //card.removeAmeba(card.id);
+    });
+
+
+
+
+    amebaCanvas.addCard(ameba);
+});
+
+
+
+
+socket.on('autoUpdateWithCluster',function(data){
+    //console.log(data);
+    Object.keys(data).forEach(function(elm,index){
+        if(index === 0 && counter < 100){
+            ///console.log(data.data[elm]);
+            counter++;
+        }
+      //  console.log(elm);
+       // console.log(data[elm].x);
+        amebaCanvas.wSetAmebaStatusWithoutPreRender(data[elm]);
+    });
+
+});
+
+
+
 socket.on('result', function (data) {
 	console.log(data);
-	var ameba = new AmebaCard({cardType:"cluster",text:data.title,textSize:"50px",color:'white',x:810,y:565});
+	var ameba = new AmebaCard(data);
     ameba.setOnMouseEventListener('dblclick',function(e,card){
         card.department.removeAmebas(card.id);
     });

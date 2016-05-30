@@ -12,7 +12,7 @@
 	this.weight = option.weight === undefined ? 1 : option.weight;
 	this.name = option.name === undefined ? generateRandomID() : option.name;
 	this.department = option.department === undefined ? {} : option.department;
-	this.tags = [];
+	this.tags = option.tags === undefined ? [] : option.tags;
 	//当たり判定
 	this.collisionType = option.collisionType === undefined ? "rect" : option.collisionType;
 	this.width = option.width === undefined ? 100 : option.width;
@@ -69,7 +69,7 @@
 	this.mouseenter = false;
 	this.mouseover = false;
 	
-	this.datas = {};
+	this.datas = option === undefined ? {} :option.datas;
 
 	//イベント管理
 	this.eventList = {
@@ -347,7 +347,7 @@ AmebaCard.prototype.clearRelativeClick = function(){
 	this.clickY = null;
 };
 AmebaCard.prototype.moveTo = function(nx,ny){
-	console.log(String(this.x)+" , "+String(this.y));
+	//console.log(String(this.x)+" , "+String(this.y));
 
 	this.x = nx - this.clickX;
 	this.y = ny - this.clickY;
@@ -380,7 +380,7 @@ AmebaCard.prototype.moveTo = function(nx,ny){
 	// 	this.y = sy+sh - this.height;
 	// }
 	//console.log("moveTo");
-	console.log(String(this.x)+" , "+String(this.y));
+	//console.log(String(this.x)+" , "+String(this.y));
 	this.updateNotification();
 
 };
@@ -485,7 +485,7 @@ var AmebaCanvas = function(option){
 	this.eventTargetList = [];
 	this.setEventListener();
 
-	this.initWebWorker('/javascripts/AmebaCanvasWebWorker.js');
+	//this.initWebWorker('/javascripts/AmebaCanvasWebWorker.js');
 
 	this.focusCard = '';
 
@@ -504,7 +504,7 @@ var AmebaCanvas = function(option){
 
 
 
-	this.startAnimation(this);
+	//this.startAnimation(this);
 
 	window.onunload = function() {
 		self.stopAnimation();
@@ -513,7 +513,7 @@ var AmebaCanvas = function(option){
 };
 AmebaCanvas.prototype.MOUSEEVENTTYPE = ["click","mousedown","mousemove","mouseup","dblclick","mouseover","mouseenter","mouseleave","mouseout","show","contextmenu"];
 
-AmebaCanvas.prototype.startAnimation = function(){
+AmebaCanvas.prototype.startAnimation = function(socket){
 	var self = this;
 
 	//self.drawAmebas(self); 	// this.animationId = setInterval(function(){self.drawAmebas(self)},1);
@@ -530,19 +530,35 @@ AmebaCanvas.prototype.startAnimation = function(){
 	}
 
 	self.drawAnimation = requestAnimationFrame( function () {
-		//self.updatePositionsWithClustering();
-		self.wProcessSendAllDatasWithoutPreRender(function(sendObj){
-			console.log('update');
-			self.worker.postMessage(
-				{act:'updatePositionWithClustering',
-				data:{
-					canvas:{width:self.width,height:self.height,zOrder:self.zOrder},
-					amebas:sendObj
-					}
-				});
-		});
+		//console.log(socket);
+		//
 		self.drawAmebas(self);
-		self.startAnimation();
+		if(socket === undefined){
+			self.startAnimation();
+			//console.log('undefined');
+
+		}else{
+			self.updatePositionsWithClustering();
+			Object.keys(self.amebas).forEach(function(elm,index){
+				//console.log(elm);
+				var target = self.amebas[elm];
+				socket.emit('sync_cluster_move',{id:target.id,x:target.x,y:target.y});
+
+			});
+
+			self.startAnimation(socket);
+		}
+		// self.wProcessSendAllDatasWithoutPreRender(function(sendObj){
+		// 	//console.log('update');
+		// 	self.worker.postMessage(
+		// 		{act:'updatePositionWithClustering',
+		// 		data:{
+		// 			canvas:{width:self.width,height:self.height,zOrder:self.zOrder},
+		// 			amebas:sendObj
+		// 			}
+		// 		});
+		// });
+		//console.log('dra');
 	});
 };
 AmebaCanvas.prototype.createLayer = function(num){
@@ -973,12 +989,14 @@ AmebaCanvas.prototype.setDragEventListener = function(){
 
 			self.eventTargetList.forEach(function(elem,index){
 
-				self.amebas[elem].moveTo(e.clientX+window.pageXOffset,e.clientY+window.pageYOffset,"mousemove");
+				self.sync_drag_move(elem,e.clientX+window.pageXOffset,e.clientY+window.pageYOffset);
+				//self.amebas[elem].moveTo(e.clientX+window.pageXOffset,e.clientY+window.pageYOffset,"mousemove");
 			});
 		});
 		self.setOnMouseEventListener("mouseup",function(e){
 			self.eventTargetList.forEach(function(elem,index){
-				self.amebas[elem].moveTo(e.clientX+window.pageXOffset,e.clientY+window.pageYOffset,"mousemove");
+				//self.amebas[elem].moveTo(e.clientX+window.pageXOffset,e.clientY+window.pageYOffset,"mousemove");
+				self.sync_drag_move(elem,e.clientX+window.pageXOffset,e.clientY+window.pageYOffset);
 			});
 			 // console.log(element);
 			
@@ -1136,7 +1154,7 @@ AmebaCanvas.prototype.setDragEventListener = function(){
 			//self.propagateMouseEvent(e,false);
 	});
 	self.setOnMouseEventListener("contextmenu",function(e){
-        console.log('aaaaa');
+       // console.log('aaaaa');
 
 			//self.propagateMouseEvent(e,false);
 	});
@@ -1210,7 +1228,7 @@ AmebaCanvas.prototype.updateListener = function(id){
  * 
  */
 var counter = 0;
-AmebaCanvas.prototype.initWebWorker = function(url){
+AmebaCanvas.prototype.initWebWorker = function(url,socket){
 	var self = this;
 	this.worker = new Worker(url);
 	this.worker.addEventListener('message',function(e){
@@ -1223,10 +1241,11 @@ AmebaCanvas.prototype.initWebWorker = function(url){
 				//console.log('update');
 				Object.keys(data.data).forEach(function(elm,index){
 					if(index === 0 && counter < 100){
-						console.log(data.data[elm]);
+						///console.log(data.data[elm]);
 						counter++;
 					}
 					self.wSetAmebaStatusWithoutPreRender(data.data[elm]);
+					socket.emit('sync_cluster_move',{id:id,x:x,y:y});
 				});
 				break;
 			case 'updateAmeba' :
@@ -1396,6 +1415,7 @@ AmebaCanvas.prototype.wProcessSendAllDatas = function(callback){
 		sendObj[elm].radious = amebas[elm].radious;
 
 		sendObj[elm].drawFlg = amebas[elm].drawFlg;
+		sendObj[elm].datas = amebas[elm].datas;
 	});
 	callback(sendObj);
 	//self.worker.postMessage(message,sendObj);
@@ -1440,6 +1460,7 @@ AmebaCanvas.prototype.wProcessSendAllDatasWithoutPreRender = function(callback){
 		sendObj[elm].circle = amebas[elm].circle;
 		sendObj[elm].radian = amebas[elm].radian;
 		sendObj[elm].radious = amebas[elm].radious;
+		sendObj[elm].datas = amebas[elm].datas;
 			
 	});
 	callback(sendObj);
@@ -1471,6 +1492,7 @@ AmebaCanvas.prototype.wProcessSendAllDatasWithPreRender = function(callback){
 
 		sendObj[elm].graphicType = amebas[elm].graphicType;
 		sendObj[elm].radious = amebas[elm].radious;
+		sendObj[elm].datas = amebas[elm].datas;
 
 	});
 		callback(sendObj);
@@ -1483,6 +1505,7 @@ AmebaCanvas.prototype.wProcessSendData = function(id,callback){
 	if(self.amebas[id] != undefined){
 		var ameba = self.amebas[id];
 		var sendObj = {};
+		sendObj.id = id;
 		sendObj.x = ameba.x;
 		sendObj.y = ameba.y;
 		sendObj.z = ameba.z;
@@ -1523,6 +1546,7 @@ AmebaCanvas.prototype.wProcessSendData = function(id,callback){
 
 		sendObj.drawFlg = ameba.drawFlg;
 	//	self.worker.postMessage(message,sendObj);
+		sendObj[elm].datas = amebas[elm].datas;
 
 		callback(sendObj);		
 	}
@@ -1533,6 +1557,7 @@ AmebaCanvas.prototype.wProcessSendDataWithoutPreRender = function(id,callback){
 	if(self.amebas[id] != undefined){
 		var ameba = self.amebas[id];
 		var sendObj = {};
+		sendObj.id = id;
 		sendObj.x = ameba.x;
 		sendObj.y = ameba.y;
 		sendObj.z = ameba.z;
@@ -1556,6 +1581,7 @@ AmebaCanvas.prototype.wProcessSendDataWithoutPreRender = function(id,callback){
 
 		sendObj.drawFlg = ameba.drawFlg;
 		sendObj[elm].weight = amebas[elm].weight;
+		sendObj[elm].datas = amebas[elm].datas;
 
 		callback(sendObj);
 //		self.worker.postMessage(message,sendObj);
@@ -1581,6 +1607,7 @@ AmebaCanvas.prototype.wProcessSendDataWithPreRender = function(message,id){
 		sendObj.graphicType = ameba.graphicType;
 		sendObj.radious = ameba.radious;
 		sendObj[elm].weight = amebas[elm].weight;
+		sendObj[elm].datas = amebas[elm].datas;
 
 		callback(sendObj);
 	//	self.worker.postMessage(message,sendObj);
