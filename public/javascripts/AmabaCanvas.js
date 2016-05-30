@@ -1159,6 +1159,8 @@ AmebaCanvas.prototype.setDragEventListener = function(){
 			//self.propagateMouseEvent(e,false);
 	});
 
+
+
 };
 
 AmebaCanvas.prototype.setOnMouseEventListener = function(type,method,manyFlg){
