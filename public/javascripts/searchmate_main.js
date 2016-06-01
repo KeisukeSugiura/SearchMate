@@ -43,6 +43,21 @@ var search_for = function (e) {
         query_box.value = "";
         if (query_word != null && query_word != "") {
             
+            var reg1 = /.*git/;
+            var reg2 = /http.*/;
+            var reg3 = /query:(.*)/;
+            if(reg1.test(query_word)){
+                socket.emit('join',{});
+            }else if(reg2.test(query_word)){
+                socket.emit('webshot',{url:query_word});
+            }else if(reg3.test(query_word)){
+                var match = query_word.match(reg3);
+                console.log(match[1]);
+                socket.emit('query',{query:match[1],count:10});
+           }else{
+                socket.emit('snipet',{str:query_word});
+            }
+
 
            // socket.emit('query', {query: query_word, count: 10});
 
@@ -82,58 +97,140 @@ socket.io
  */
 
 
-socket.emit('join',{});
 
 socket.on('initialize',function(message){
-    var amebaFavoriteCard = new AmebaCard({cardType:"cluster",url:"./images/favorite.png",text:"favorite",x:0,y:984});
-        amebaFavoriteCard.addTag("favorite");
-        amebaFavoriteCard.addTag("_control");
-        amebaFavoriteCard.width=96;
-        amebaFavoriteCard.height=96;
-        amebaFavoriteCard.preRenderCanvas = null;
-        amebaFavoriteCard.grobalAlpha=0.8;
-        amebaFavoriteCard.preRenderCanvas = amebaFavoriteCard.renderImage();
-        amebaFavoriteCard.setOnMouseEventListener('dblclick',function(e,card){
-            var targetCardId = card.department.focusCard;
-            console.log(targetCardId);
-            var targetCard = card.department.amebas[targetCardId];
-            targetCard.changeTagSet('favorite');
-        });
-        amebaCanvas.addCard(amebaFavoriteCard);
+    // var amebaFavoriteCard = new AmebaCard({cardType:"cluster",url:"./images/favorite.png",text:"favorite",x:0,y:984});
+    //     amebaFavoriteCard.addTag("favorite");
+    //     amebaFavoriteCard.addTag("_control");
+    //     amebaFavoriteCard.width=96;
+    //     amebaFavoriteCard.height=96;
+    //     amebaFavoriteCard.preRenderCanvas = null;
+    //     amebaFavoriteCard.grobalAlpha=0.8;
+    //     amebaFavoriteCard.preRenderCanvas = amebaFavoriteCard.renderImage();
+    //     amebaFavoriteCard.setOnMouseEventListener('dblclick',function(e,card){
+    //         var targetCardId = card.department.focusCard;
+    //         console.log(targetCardId);
+    //         var targetCard = card.department.amebas[targetCardId];
+    //         targetCard.changeTagSet('favorite');
+    //     });
+    //     amebaCanvas.addCard(amebaFavoriteCard);
 
-        var amebaSyncCard = new AmebaCard({cardType:"cluster",url:"./images/sync.png",text:"sync",x:0,y:0});
-        amebaSyncCard.addTag("sync");
-        amebaSyncCard.addTag("_control");
-        amebaSyncCard.width=96;
-        amebaSyncCard.height=96;
-        amebaSyncCard.preRenderCanvas = null;
-        amebaSyncCard.grobalAlpha=0.8;
-        amebaSyncCard.preRenderCanvas = amebaSyncCard.renderImage();
-        amebaSyncCard.setOnMouseEventListener('dblclick',function(e,card){
-            var targetCardId = card.department.focusCard;
-            var targetCard = card.department.amebas[targetCardId];
-            targetCard.changeTagSet('sync');
-        });
-        amebaCanvas.addCard(amebaSyncCard);
+    //     var amebaSyncCard = new AmebaCard({cardType:"cluster",url:"./images/sync.png",text:"sync",x:0,y:0});
+    //     amebaSyncCard.addTag("sync");
+    //     amebaSyncCard.addTag("_control");
+    //     amebaSyncCard.width=96;
+    //     amebaSyncCard.height=96;
+    //     amebaSyncCard.preRenderCanvas = null;
+    //     amebaSyncCard.grobalAlpha=0.8;
+    //     amebaSyncCard.preRenderCanvas = amebaSyncCard.renderImage();
+    //     amebaSyncCard.setOnMouseEventListener('dblclick',function(e,card){
+    //         var targetCardId = card.department.focusCard;
+    //         var targetCard = card.department.amebas[targetCardId];
+    //         targetCard.changeTagSet('sync');
+    //     });
+    //     amebaCanvas.addCard(amebaSyncCard);
 
-        var amebaDeleteCard = new AmebaCard({cardType:"cluster",url:"./images/delete.png",text:"Delete",x:0,y:492});
-        amebaDeleteCard.addTag("delete");
-        amebaDeleteCard.addTag("_control");
-        amebaDeleteCard.width=96;
-        amebaDeleteCard.height=96;
-        amebaDeleteCard.preRenderCanvas = null;
-        amebaDeleteCard.grobalAlpha=0.8;
-        amebaDeleteCard.preRenderCanvas = amebaDeleteCard.renderImage();
-        amebaDeleteCard.setOnMouseEventListener('dblclick',function(e,card){
-            var targetCardId = card.department.focusCard;
-            card.department.removeAmeba(targetCardId);
+    //     var amebaDeleteCard = new AmebaCard({cardType:"cluster",url:"./images/delete.png",text:"Delete",x:0,y:492});
+    //     amebaDeleteCard.addTag("delete");
+    //     amebaDeleteCard.addTag("_control");
+    //     amebaDeleteCard.width=96;
+    //     amebaDeleteCard.height=96;
+    //     amebaDeleteCard.preRenderCanvas = null;
+    //     amebaDeleteCard.grobalAlpha=0.8;
+    //     amebaDeleteCard.preRenderCanvas = amebaDeleteCard.renderImage();
+    //     amebaDeleteCard.setOnMouseEventListener('dblclick',function(e,card){
+    //         var targetCardId = card.department.focusCard;
+    //         card.department.removeAmeba(targetCardId);
+    //     });
+    //     amebaCanvas.addCard(amebaDeleteCard);
+
+
+         var initVirtual = function(){
+            console.log("aaa");
+                 amebaCanvas.startAnimation(socket);
+            amebaCanvas.wProcessSendAllDatas(function(data){
+                socket.emit('initialize',data);
+            });
+        };
+    $.ajax({
+      type: 'GET',
+      url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/branches',
+      dataType: 'json',
+      success: function(json){
+        var count =0;
+        console.log(json);
+        // var len = json.length;
+        // for(var i=0; i < len; i++){
+        //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+        // }
+        json.forEach(function(elm,index){
+            var amebaBranchCard = new AmebaCard({cardType:"cluster",text:elm.name,textSize:"50px",color:'white',x:960-(index-1)*480,y:300});
+            amebaBranchCard.addTag(elm.name);
+            console.log(elm.commit.url);
+            amebaBranchCard.datas['url'] = elm.commit.url;
+           // amebaDeleteCard.datas['name'] = elm.name;
+            amebaBranchCard.datas['branch']= elm.name;
+            amebaBranchCard.addTag("_control");
+           // amebaDeleteCard.width=96;
+            //amebaDeleteCard.height=96;
+           // amebaDeleteCard.preRenderCanvas = null;
+            amebaBranchCard.grobalAlpha=0.8;
+           // amebaDeleteCard.preRenderCanvas = amebaDeleteCard.renderImage();
+            amebaBranchCard.setOnMouseEventListener('dblclick',function(e,card){
+                //var targetCardId = card.department.focusCard;
+                //card.department.removeAmeba(targetCardId);
+                //mokkai ajax
+                //とりあえず最新
+                
+                $.ajax({
+                  type: 'GET',
+                  url: String(elm.commit.url),
+                  dataType: 'json',
+                  beforeSend:function(req){
+                    //console.log(req);
+                  },
+                  success: function(json2){
+                    console.log(json2);
+                    // var len = json.length;
+                    // for(var i=0; i < len; i++){
+                    //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+                    // }
+                    
+                    var name = json2.commit.author.name;
+                    var message = json2.commit.message;
+                    var url = json2['html_url'];
+                    var branch = amebaBranchCard.datas['branch'];
+                    var x = amebaBranchCard.x;
+                    var y = amebaBranchCard.y;
+                    createPopupBranchCard({x:x,y:y,branchs:[{name:name,message:message,url:url,branch:branch}]});
+                    
+                    }
+                });
+
+            });
+
+            amebaCanvas.addCard(amebaBranchCard);
+            count++;
+                    console.log(count);
+                    console.log(json.length);
+                    if(count == json.length){
+
+                        initVirtual();
+                    }   
+
         });
-        amebaCanvas.addCard(amebaDeleteCard);
-        amebaCanvas.initWebWorker('/javascripts/AmebaCanvasWebWorker.js',socket);
-        amebaCanvas.startAnimation(socket);
-        amebaCanvas.wProcessSendAllDatas(function(data){
-            socket.emit('initialize',data);
-        });
+
+
+       
+      }
+    });
+
+        
+
+
+
+        //amebaCanvas.initWebWorker('/javascripts/AmebaCanvasWebWorker.js',socket);
+        
        // amebaCanvas.startAnimation();
 });
 
@@ -145,13 +242,42 @@ socket.on('sync_virtual',function(message){
     var card = new AmebaCard(message[elm]);
     console.log(card.tags);
     if(card.hasTag('_control')){
-        card.preRenderCanvas = null;
+       // card.preRenderCanvas = null;
         card.grobalAlpha=0.8;
-        card.preRenderCanvas = card.renderImage();
-        card.setOnMouseEventListener('dblclick',function(e,acard){
-            var targetCardId = acard.department.focusCard;
-            acard.department.removeAmeba(targetCardId);
-        });
+        //card.preRenderCanvas = card.renderImage();
+       
+       card.setOnMouseEventListener('dblclick',function(e,card){
+                //var targetCardId = card.department.focusCard;
+                //card.department.removeAmeba(targetCardId);
+                //mokkai ajax
+                //とりあえず最新
+                
+                $.ajax({
+                  type: 'GET',
+                  url: card.datas['url'],
+                  dataType: 'json',
+                  beforeSend:function(req){
+                    //console.log(req);
+                  },
+                  success: function(json2){
+                    console.log(json2);
+                    // var len = json.length;
+                    // for(var i=0; i < len; i++){
+                    //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+                    // }
+                    
+                    var name = json2.commit.author.name;
+                    var message = json2.commit.message;
+                    var url = json2['html_url'];
+                    var branch = card.datas['branch'];
+                    var x = card.x;
+                    var y = card.y;
+                    createPopupBranchCard({x:x,y:y,branchs:[{name:name,message:message,url:url,branch:branch}]});
+                    
+                    }
+                });
+    });
+
     }else if(card.datas["link"] != undefined){
         amebaCanvas.webCardEventSet(card);
     }
@@ -227,7 +353,21 @@ AmebaCanvas.prototype.sync_drag_move = function(id,x,y){
     });
 };
 
+socket.on('sync_snipet',function(data){
+    /*
+    
+     */
+    var ameba = new AmebaCard(data);
 
+    amebaCanvas.addCard(ameba);
+
+    ameba.setOnMouseEventListener('dblclick',function(e){
+        createPopupSunipetCard({x:ameba.x,y:ameba.y,snipet:ameba.datas['snipet']});
+    });
+
+    //amebaCanvas.drawAmebas(amebaCanvas);
+
+});
 
 socket.on('sync_add',function(data){
 
@@ -242,7 +382,7 @@ socket.on('sync_drag_move',function(data){
 });
 
 socket.on('sync_cluster_move',function(data){
-    //console.log(data);
+   // console.log(data);
     //console.log(amebaCanvas.amebas[data.id]);
         if(amebaCanvas.amebas[data.id] != undefined){
             amebaCanvas.amebas[data.id].setPosition(data.x,data.y);
@@ -251,7 +391,7 @@ socket.on('sync_cluster_move',function(data){
 });
 
 socket.on('sync_result_image',function(data){
-            console.log(data);
+        //    console.log(data);
     /*
      linksdataArray.push({
         title: titlearray[i],
@@ -265,8 +405,8 @@ socket.on('sync_result_image',function(data){
     
 
     ameba.setOnMouseEventListener("click",function(e,card){
-       card.width = card.width*1.10;
-       card.height = card.height*1.10;
+      // card.width = card.width*1.10;
+      // card.height = card.height*1.10;
         card.department.focusCard = card.id;
         console.log(card.department.focusCard);
        card.preRender();
@@ -307,6 +447,8 @@ socket.on('sync_result_image',function(data){
 
 
     amebaCanvas.addCard(ameba);
+   // amebaCanvas.drawAmebas(amebaCanvas);
+
 });
 
 
@@ -332,7 +474,7 @@ socket.on('result', function (data) {
 	console.log(data);
 	var ameba = new AmebaCard(data);
     ameba.setOnMouseEventListener('dblclick',function(e,card){
-        card.department.removeAmebas(card.id);
+    //    card.department.removeAmebas(card.id);
     });
 	ameba.addTag(data.title);
 	amebaCanvas.addCard(ameba);
@@ -384,10 +526,11 @@ socket.on('result_image', function (obj) {
         image: './images/sunagitune.jpeg'//ロード画像url
        });
      */
-    var ameba = new AmebaCard({cardType:"image",url:obj.image,scale:0.1});
-    ameba.addTag(obj.query);
-    ameba.datas['originalTag'] = [];
-    ameba.datas['originalTag'].push(obj.query);
+    //var ameba = new AmebaCard({cardType:"image",url:obj.image,scale:0.1});
+    var ameba = new AmebaCard(obj);
+    //ameba.addTag(obj.query);
+   // ameba.datas['originalTag'] = [];
+   // ameba.datas['originalTag'].push(obj.query);
 
 
     ameba.setOnMouseEventListener("click",function(e,card){
@@ -433,36 +576,142 @@ socket.on('result_image', function (obj) {
 
 
     amebaCanvas.addCard(ameba);
-
+   // amebaCanvas.drawAmebas(amebaCanvas);
  
 });
 
-$(function(){
-   $.ajax({
-      type: 'GET',
-      url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/branches',
-      dataType: 'json',
-      success: function(json){
-        console.log(json);
-        // var len = json.length;
-        // for(var i=0; i < len; i++){
-        //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
-        // }
-        
-      }
+
+var createPopupSunipetCard = function(data){
+    /*
+        sunipet,x,y
+     */
+    var div = document.createElement('div');
+    div.classList.add("well");
+    div.classList.add("well-lg");
+    div.style.position = "absolute";
+    div.style.zIndex = 11;
+    div.style.padding = "5px";
+    div.style.width = "400px";
+    div.style.height = "600px";
+    div.style.left = String(data.x)+"px";
+    div.style.top = String(data.y)+"px";
+    var p = document.createElement('p');
+    var h3 = document.createElement('h3');
+
+    p.classList.add('lead');
+
+    p.style.wordWrap='break-word';
+    p.innerHTML = data.snipet;
+    h3.innerHTML = "snippet";
+
+    div.appendChild(h3);
+    div.appendChild(p);
+
+    document.body.appendChild(div);
+
+    div.addEventListener('mouseleave',function(e){
+        div.parentNode.removeChild(div);
     });
 
-   $.ajax({
-      type: 'GET',
-      url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/events',
-      dataType: 'json',
-      success: function(json){
-        console.log(json);
-        // var len = json.length;
-        // for(var i=0; i < len; i++){
-        //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
-        // }
-        
-      }
+};
+
+var createPopupBranchCard = function(data){
+    /*
+        x,y,branchs[branch,name,url]
+     */
+    
+    data.branchs.forEach(function(elm,index){
+
+        var div = document.createElement('div');
+        div.classList.add("well");
+        div.classList.add("well-lg");
+        div.style.position = "absolute";
+        div.style.zIndex = 11;
+        div.style.padding = "5px";
+        div.style.width = "600px";
+        div.style.height = "400px";
+        div.style.left = String(data.x)+"px";
+        div.style.top = String(data.y+ index*40)+"px";
+
+        var branch = document.createElement('p');
+        var name = document.createElement('p');
+        var url = document.createElement('a');
+        var message = document.createElement('p');
+
+        branch.classList.add('lead');
+        name.classList.add('lead');
+
+        var h3b = document.createElement('h3');
+        var h3n = document.createElement('h3');
+        var h3u = document.createElement('h3');
+        var h3m = document.createElement('h3');
+
+        h3b.innerHTML = "Branch";
+        h3n.innerHTML = "Name";
+        h3u.innerHTML = "Url";
+        h3m.innerHTML = "Message";
+
+        branch.style.wordWrap='break-word';
+        name.style.wordWrap='break-word';
+        url.style.wordWrap='break-word';
+        message.style.wordWrap='break-word';
+
+        branch.innerHTML = elm.branch;
+        name.innerHTML = elm.name;
+        url.innerHTML = elm.url;
+        message.innerHTML = elm.message;
+
+        div.appendChild(h3b);
+        div.appendChild(branch);
+        div.appendChild(h3m);
+        div.appendChild(message);
+        div.appendChild(h3n);
+        div.appendChild(name);
+        div.appendChild(h3u);
+        div.appendChild(url);
+
+        document.body.appendChild(div);
+
+        url.addEventListener('click',function(e){
+             window.open(elm.url);
+        });
+        div.addEventListener('mouseleave',function(e){
+            div.parentNode.removeChild(div);
+        });
+
     });
-});
+
+
+
+};
+
+
+// $(function(){
+//    $.ajax({
+//       type: 'GET',
+//       url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/branches',
+//       dataType: 'json',
+//       success: function(json){
+//         console.log(json);
+//         // var len = json.length;
+//         // for(var i=0; i < len; i++){
+//         //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+//         // }
+        
+//       }
+//     });
+
+//    $.ajax({
+//       type: 'GET',
+//       url: 'https://api.github.com/repos/KeisukeSugiura/SearchMate/events',
+//       dataType: 'json',
+//       success: function(json){
+//         console.log(json);
+//         // var len = json.length;
+//         // for(var i=0; i < len; i++){
+//         //   $("#a").append(json[i].version + ' ' + json[i].codename + '<br>');
+//         // }
+        
+//       }
+//     });
+// });

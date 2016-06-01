@@ -69,7 +69,7 @@
 	this.mouseenter = false;
 	this.mouseover = false;
 	
-	this.datas = option === undefined ? {} :option.datas;
+	this.datas = option.datas === undefined ? {} :option.datas;
 
 	//イベント管理
 	this.eventList = {
@@ -538,10 +538,12 @@ AmebaCanvas.prototype.startAnimation = function(socket){
 			//console.log('undefined');
 
 		}else{
+			//console.log(Object.keys(self.amebas).length);
 			self.updatePositionsWithClustering();
 			Object.keys(self.amebas).forEach(function(elm,index){
 				//console.log(elm);
 				var target = self.amebas[elm];
+				//console.log(target);
 				socket.emit('sync_cluster_move',{id:target.id,x:target.x,y:target.y});
 
 			});
@@ -970,12 +972,12 @@ AmebaCanvas.prototype.setDragEventListener = function(){
 		var revOrder = self.zOrder.reverse();
 
 		if(!revOrder.some(function(element){
-			if(self.amebas[element].isCollision(event.clientX+window.pageXOffset-self.x,event.clientY+window.pageYOffset-self.y)){
+			if(self.amebas[element].isCollision(e.clientX+window.pageXOffset-self.x,e.clientY+window.pageYOffset-self.y)){
 				 self.eventTargetList.push(element);
 				 self.zOrder.reverse();
 				 self.popupZOrder(element);
 				
-				 self.amebas[element].relativeClick(event.clientX+window.pageXOffset,event.clientY+window.pageYOffset);	
+				 self.amebas[element].relativeClick(e.clientX+window.pageXOffset,e.clientY+window.pageYOffset);	
 				//self.amebas[element].eventHandler(event);
 				
 				return true;
@@ -1000,12 +1002,46 @@ AmebaCanvas.prototype.setDragEventListener = function(){
 			});
 			 // console.log(element);
 			
+			var revOrder = self.zOrder.reverse();
+
+
+			if(!revOrder.some(function(element){
+				if(self.amebas[element].isCollision(e.clientX+window.pageXOffset-self.x,e.clientY+window.pageYOffset-self.y)){
+				// self.eventTargetList.push(element);
+				 self.zOrder.reverse();
+				// self.popupZOrder(element);
+				
+				if(self.amebas[element].type == "culster"){
+					self.eventTargetList.forEach(function(elem,index){			
+						
+						self.amebas[element].tags.forEach(function(elm,index){
+							if(elm != '_control'){
+								self.amebas[elem].tags = [];
+								self.amebas[elem].tags.push(elm);
+								console.log(elm);
+								console.log(self.amebas[elem].tags);
+							console.log('mouseup');
+						return true;
+							}
+						});
+					});
+				
+				}
+				
+			}
+			})){
+				self.zOrder.reverse();
+			}		
+
+
+
+
 			self.clearOnMouseEventListener("mousemove");
 			self.clearOnMouseEventListener("mouseleave");
 			self.clearOnMouseEventListener("mouseup");
 			self.eventTargetList = [];
 
-		});
+		},true);
 
 
 		self.setOnMouseEventListener("mouseleave",function(e){

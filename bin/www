@@ -175,6 +175,8 @@ io.on('connection', function (client) {
     });
 
     client.on('sync_cluster_move',function(data){
+    //  console.log(data);
+      
       client.broadcast.emit('sync_cluster_move',data);
     });
 
@@ -338,7 +340,7 @@ io.on('connection', function (client) {
             ameba.addTag(resultobj.title);
             virtualAmebaCanvas.addCard(ameba);
             virtualAmebaCanvas.wProcessSendData(ameba.id,function(obj){
-              obj.id = ameba.id;
+              
             client.emit('result', obj);
             client.broadcast.emit('result',obj);
             });
@@ -515,7 +517,7 @@ io.on('connection', function (client) {
 
     });
 
-  client.on('webshot',function(data){
+  client.on('webshot',function(obj){
     /*
       {url,,}
      */
@@ -530,8 +532,7 @@ io.on('connection', function (client) {
               }
       };
 
-
-    var renderStream = webshot(data.url,'./images/result' + 'single' + '.png',options,function(err){
+    var renderStream = webshot(String(obj.url),'./images/result' + 'single' + '.png',options,function(err){
         fs.readFile( './images/result' + 'single' + '.png',function(err, buf){   //neko.jpgを読み込み、function(err,data)の呼び出し
                   //console.log(buf);
 //                          var data = buf.toString("base64");
@@ -540,7 +541,7 @@ io.on('connection', function (client) {
                   var data = buf.toString("base64");
                   var image = util.format("data:%s;base64,%s", mime.lookup('./images/result' + 'single' + '.png'), data);
                 
-               ceerio.fetch(data.url, function (err, $, reses, body) {
+               ceerio.fetch(obj.url, function (err, $, reses, body) {
                   
                   var title =$('title').text();
                   var ameba = new AmebaCard({cardType:"image",url:image,scale:0.1});
@@ -548,7 +549,7 @@ io.on('connection', function (client) {
                    //ameba.datas['originalTag'] = [];
                   // ameba.datas['originalTag'].push(elm.query);
                    ameba.datas['title']= title;
-                   ameba.datas['link'] = data.url;
+                   ameba.datas['link'] = obj.url;
                    ameba.datas['snipet'] = "";
                    ameba.datas['image'] = image;
                   virtualAmebaCanvas.addCard(ameba);
@@ -564,6 +565,20 @@ io.on('connection', function (client) {
       });
   });
 
+  client.on('snipet',function(data){
+     fs.readFile( './images/code.png',function(err, buf){   //
+      var imagedata = buf.toString("base64");
+      var image = util.format("data:%s;base64,%s",mime.lookup('./images/code.png'),imagedata);
+      var con = {};
+      con.snipet= data.str;
+      var ameba = new AmebaCard({cardType:'image',url:image,datas:con,width:96,height:96});
+      virtualAmebaCanvas.addCard(ameba);
+      virtualAmebaCanvas.wProcessSendData(ameba.id,function(data){
+        client.emit('sync_snipet',data);
+        client.broadcast.emit('sync_snipet',data);
+      });
+    });
+  });
 
 
 
